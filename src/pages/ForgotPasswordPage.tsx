@@ -1,0 +1,80 @@
+import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { PawPrint, Mail } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+
+export default function ForgotPasswordPage() {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
+  const { toast } = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    // TODO: Supabase resetPasswordForEmail
+    setTimeout(() => {
+      setLoading(false);
+      setSent(true);
+      toast({ title: "Email sent! 📧", description: "Check your inbox for the reset link." });
+    }, 1000);
+  };
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <Card className="w-full max-w-md shadow-card">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-xl gradient-header">
+            <PawPrint className="h-6 w-6 text-primary-foreground" />
+          </div>
+          <CardTitle className="font-heading text-2xl font-black">
+            {sent ? "Check Your Email" : "Forgot Password"}
+          </CardTitle>
+          <CardDescription>
+            {sent ? "We've sent a reset link to your email" : "Enter your email to receive a reset link"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!sent ? (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+              <Button type="submit" className="w-full rounded-full font-heading font-bold" disabled={loading}>
+                {loading ? "Sending..." : "Send Reset Link"}
+              </Button>
+            </form>
+          ) : (
+            <div className="text-center">
+              <p className="text-4xl mb-4">📧</p>
+              <Button variant="outline" onClick={() => setSent(false)} className="rounded-full">
+                Send Again
+              </Button>
+            </div>
+          )}
+          <p className="mt-4 text-center text-sm text-muted-foreground">
+            <Link to="/login" className="font-medium text-primary hover:underline">
+              Back to Login
+            </Link>
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
