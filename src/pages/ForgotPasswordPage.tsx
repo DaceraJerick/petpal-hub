@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { PawPrint, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -16,12 +17,16 @@ export default function ForgotPasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // TODO: Supabase resetPasswordForEmail
-    setTimeout(() => {
-      setLoading(false);
-      setSent(true);
-      toast({ title: "Email sent! 📧", description: "Check your inbox for the reset link." });
-    }, 1000);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setLoading(false);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+      return;
+    }
+    setSent(true);
+    toast({ title: "Email sent! 📧", description: "Check your inbox for the reset link." });
   };
 
   return (
@@ -45,15 +50,7 @@ export default function ForgotPasswordPage() {
                 <Label htmlFor="email">Email</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
-                    required
-                  />
+                  <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10" required />
                 </div>
               </div>
               <Button type="submit" className="w-full rounded-full font-heading font-bold" disabled={loading}>
@@ -63,15 +60,11 @@ export default function ForgotPasswordPage() {
           ) : (
             <div className="text-center">
               <p className="text-4xl mb-4">📧</p>
-              <Button variant="outline" onClick={() => setSent(false)} className="rounded-full">
-                Send Again
-              </Button>
+              <Button variant="outline" onClick={() => setSent(false)} className="rounded-full">Send Again</Button>
             </div>
           )}
           <p className="mt-4 text-center text-sm text-muted-foreground">
-            <Link to="/login" className="font-medium text-primary hover:underline">
-              Back to Login
-            </Link>
+            <Link to="/login" className="font-medium text-primary hover:underline">Back to Login</Link>
           </p>
         </CardContent>
       </Card>
