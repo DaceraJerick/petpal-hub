@@ -1,58 +1,63 @@
-import { useState } from "react";
-import { Bell, Check, Filter } from "lucide-react";
+import { Bell, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
-import { PillBadge } from "@/components/ui/pill-badge";
+import { LoadingCard } from "@/components/ui/loading-card";
 import { motion } from "framer-motion";
-
-const mockNotifications = [
-  { id: "1", type: "feeding", message: "🍖 Time to feed Buddy! (Dinner)", read: false, createdAt: "5 minutes ago" },
-  { id: "2", type: "appointment", message: "🏥 Reminder: Luna's vet visit tomorrow at 2:30 PM", read: false, createdAt: "1 hour ago" },
-  { id: "3", type: "medication", message: "💊 Buddy needs Heartgard now", read: false, createdAt: "3 hours ago" },
-  { id: "4", type: "vaccine", message: "💉 Bordetella vaccine is due soon for Buddy", read: true, createdAt: "1 day ago" },
-  { id: "5", type: "appointment", message: "✅ Your booking for Luna's grooming is confirmed", read: true, createdAt: "2 days ago" },
-  { id: "6", type: "service", message: "🛎 Paw Perfect Grooming booked for March 20", read: true, createdAt: "3 days ago" },
-];
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { formatDistanceToNow } from "date-fns";
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState(mockNotifications);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  const markAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  };
+  const { data: notifications = [], isLoading } = useQuery({
+    queryKey: ["notifications", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from("notifications").select("*").eq("user_id", user!.id).order("created_at", { ascending: false });
+      return data ?? [];
+    },
+    enabled: !!user,
+  });
 
-  const markRead = (id: string) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-  };
+  const markAllRead = useMutation({
+    mutationFn: async () => {
+      await supabase.from("notifications").update({ read: true }).eq("user_id", user!.id).eq("read", false);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+  });
+
+  const markRead = useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from("notifications").update({ read: true }).eq("id", id);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+  });
 
   const unreadCount = notifications.filter((n) => !n.read).length;
+
+  if (isLoading) return <div className="container mx-auto max-w-3xl px-4 py-4"><LoadingCard /><LoadingCard /></div>;
 
   return (
     <div className="container mx-auto max-w-3xl px-4 py-4 md:py-6">
       <PageHeader title="Notifications 🔔" subtitle={`${unreadCount} unread`}>
-        <Button variant="ghost" size="sm" onClick={markAllRead} className="text-primary text-xs">
+        <Button variant="ghost" size="sm" onClick={() => markAllRead.mutate()} className="text-primary text-xs">
           <Check className="mr-1 h-3.5 w-3.5" /> Mark all read
         </Button>
       </PageHeader>
 
       <div className="mt-4 space-y-2">
+        {notifications.length === 0 && <p className="text-center text-sm text-muted-foreground py-8">No notifications yet.</p>}
         {notifications.map((notif, i) => (
-          <motion.div
-            key={notif.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.03 }}
-          >
-            <Card
-              className={`cursor-pointer shadow-card transition-all ${!notif.read ? "border-primary/30 bg-primary-light/30" : ""}`}
-              onClick={() => markRead(notif.id)}
-            >
+          <motion.div key={notif.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
+            <Card className={`cursor-pointer shadow-card transition-all ${!notif.read ? "border-primary/30 bg-primary-light/30" : ""}`} onClick={() => markRead.mutate(notif.id)}>
               <CardContent className="flex items-center gap-3 p-3">
                 {!notif.read && <div className="h-2.5 w-2.5 shrink-0 rounded-full bg-primary" />}
                 <div className="flex-1">
                   <p className={`text-sm ${!notif.read ? "font-medium" : "text-muted-foreground"}`}>{notif.message}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{notif.createdAt}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}</p>
                 </div>
               </CardContent>
             </Card>
