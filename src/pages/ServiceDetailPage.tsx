@@ -96,6 +96,20 @@ export default function ServiceDetailPage() {
           <div className="mt-4 space-y-2 text-sm text-muted-foreground">
             {service.location && <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" /> {service.location}</div>}
           </div>
+
+          {(service as any).latitude && (service as any).longitude && (
+            <Card className="mt-4 shadow-card overflow-hidden">
+              <div className="h-[200px] w-full">
+                <MapContainer center={[Number((service as any).latitude), Number((service as any).longitude)]} zoom={15} className="h-full w-full" scrollWheelZoom={false}>
+                  <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                  <Marker position={[Number((service as any).latitude), Number((service as any).longitude)]}>
+                    <Popup><strong>{service.name}</strong><br /><span className="text-xs">{service.location}</span></Popup>
+                  </Marker>
+                </MapContainer>
+              </div>
+            </Card>
+          )}
+          </div>
           <div className="mt-4 flex items-center gap-3">
             <div className="flex items-center gap-0.5">
               {[1, 2, 3, 4, 5].map((s) => <Star key={s} className={`h-4 w-4 ${s <= Math.round(Number(service.rating) || 0) ? "fill-warning text-warning" : "text-border"}`} />)}
