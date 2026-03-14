@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Star, MapPin, Phone, Clock } from "lucide-react";
+import { ArrowLeft, Star, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -81,6 +81,9 @@ export default function ServiceDetailPage() {
 
   if (isLoading || !service) return <div className="container mx-auto max-w-3xl px-4 py-4"><LoadingCard /><LoadingCard /></div>;
 
+  const svc = service as any;
+  const hasCoords = svc.latitude && svc.longitude;
+
   return (
     <div className="container mx-auto max-w-3xl px-4 py-4 md:py-6">
       <div className="flex items-center gap-2 mb-4">
@@ -107,12 +110,12 @@ export default function ServiceDetailPage() {
         </CardContent>
       </Card>
 
-      {(service as any).latitude && (service as any).longitude && (
+      {hasCoords && (
         <Card className="shadow-card mb-6 overflow-hidden">
           <div className="h-[250px] w-full">
-            <MapContainer center={[Number((service as any).latitude), Number((service as any).longitude)]} zoom={15} className="h-full w-full" scrollWheelZoom={false}>
+            <MapContainer center={[Number(svc.latitude), Number(svc.longitude)]} zoom={15} className="h-full w-full" scrollWheelZoom={false}>
               <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              <Marker position={[Number((service as any).latitude), Number((service as any).longitude)]}>
+              <Marker position={[Number(svc.latitude), Number(svc.longitude)]}>
                 <Popup><strong>{service.name}</strong><br /><span className="text-xs">{service.location}</span></Popup>
               </Marker>
             </MapContainer>
@@ -120,6 +123,7 @@ export default function ServiceDetailPage() {
         </Card>
       )}
 
+      <Card className="shadow-card mb-6">
         <CardContent className="p-5">
           <h3 className="font-heading text-lg font-bold mb-4">Book This Service</h3>
           <form onSubmit={handleBook} className="space-y-4">
