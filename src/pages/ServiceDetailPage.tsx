@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Star, MapPin, Phone, Clock } from "lucide-react";
+import { ArrowLeft, Star, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,16 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+});
 
 const categoryLabels: Record<string, string> = { grooming: "Grooming", boarding: "Boarding", dog_walking: "Dog Walking", pharmacy: "Pharmacy", training: "Training" };
 
@@ -71,6 +81,9 @@ export default function ServiceDetailPage() {
 
   if (isLoading || !service) return <div className="container mx-auto max-w-3xl px-4 py-4"><LoadingCard /><LoadingCard /></div>;
 
+  const svc = service as any;
+  const hasCoords = svc.latitude && svc.longitude;
+
   return (
     <div className="container mx-auto max-w-3xl px-4 py-4 md:py-6">
       <div className="flex items-center gap-2 mb-4">
@@ -96,6 +109,19 @@ export default function ServiceDetailPage() {
           <div className="mt-3"><span className="font-heading text-2xl font-black text-primary">{service.price || "—"}</span></div>
         </CardContent>
       </Card>
+
+      {hasCoords && (
+        <Card className="shadow-card mb-6 overflow-hidden">
+          <div className="h-[250px] w-full">
+            <MapContainer center={[Number(svc.latitude), Number(svc.longitude)]} zoom={15} className="h-full w-full" scrollWheelZoom={false}>
+              <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              <Marker position={[Number(svc.latitude), Number(svc.longitude)]}>
+                <Popup><strong>{service.name}</strong><br /><span className="text-xs">{service.location}</span></Popup>
+              </Marker>
+            </MapContainer>
+          </div>
+        </Card>
+      )}
 
       <Card className="shadow-card mb-6">
         <CardContent className="p-5">
