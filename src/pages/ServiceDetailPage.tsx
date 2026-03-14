@@ -120,6 +120,17 @@ export default function ServiceDetailPage() {
               </Marker>
             </MapContainer>
           </div>
+          <div className="p-3 flex items-center justify-between">
+            <span className="text-xs text-muted-foreground truncate">{service.location}</span>
+            <a
+              href={`https://www.google.com/maps/dir/?api=1&destination=${svc.latitude},${svc.longitude}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 transition-opacity"
+            >
+              <MapPin className="h-3 w-3" /> Get Directions
+            </a>
+          </div>
         </Card>
       )}
 
