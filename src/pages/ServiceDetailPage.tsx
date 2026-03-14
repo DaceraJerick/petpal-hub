@@ -107,7 +107,19 @@ export default function ServiceDetailPage() {
         </CardContent>
       </Card>
 
-      <Card className="shadow-card mb-6">
+      {(service as any).latitude && (service as any).longitude && (
+        <Card className="shadow-card mb-6 overflow-hidden">
+          <div className="h-[250px] w-full">
+            <MapContainer center={[Number((service as any).latitude), Number((service as any).longitude)]} zoom={15} className="h-full w-full" scrollWheelZoom={false}>
+              <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              <Marker position={[Number((service as any).latitude), Number((service as any).longitude)]}>
+                <Popup><strong>{service.name}</strong><br /><span className="text-xs">{service.location}</span></Popup>
+              </Marker>
+            </MapContainer>
+          </div>
+        </Card>
+      )}
+
         <CardContent className="p-5">
           <h3 className="font-heading text-lg font-bold mb-4">Book This Service</h3>
           <form onSubmit={handleBook} className="space-y-4">
