@@ -31,7 +31,6 @@ export default function BookAppointmentPage() {
   const [selectedClinic, setSelectedClinic] = useState("");
   const [selectedDoctor, setSelectedDoctor] = useState("");
   const [selectedPet, setSelectedPet] = useState("");
-  const [selectedDoctor, setSelectedDoctor] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [reason, setReason] = useState("");
@@ -45,16 +44,6 @@ export default function BookAppointmentPage() {
     },
   });
 
-  const { data: doctors = [] } = useQuery({
-    queryKey: ["doctors-list"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("doctors")
-        .select("id, full_name, specialization, clinic_address, photo_url")
-        .order("full_name");
-      return data ?? [];
-    },
-  });
 
   const { data: pets = [] } = useQuery({
     queryKey: ["pets", user?.id],
@@ -95,7 +84,6 @@ export default function BookAppointmentPage() {
     const { error } = await supabase.from("appointments").insert({
       user_id: user.id,
       pet_id: selectedPet,
-      doctor_id: selectedDoctor,
       clinic_id: selectedClinic || null,
       doctor_id: (selectedDoctor && selectedDoctor !== "none") ? selectedDoctor : null,
       vet_name: doctorData?.name || null,
