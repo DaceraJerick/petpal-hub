@@ -19,6 +19,7 @@ export type Database = {
           clinic_id: string | null
           created_at: string
           date: string
+          doctor_id: string | null
           id: string
           notes: string | null
           pet_id: string
@@ -33,6 +34,7 @@ export type Database = {
           clinic_id?: string | null
           created_at?: string
           date: string
+          doctor_id?: string | null
           id?: string
           notes?: string | null
           pet_id: string
@@ -47,6 +49,7 @@ export type Database = {
           clinic_id?: string | null
           created_at?: string
           date?: string
+          doctor_id?: string | null
           id?: string
           notes?: string | null
           pet_id?: string
@@ -66,6 +69,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "appointments_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "doctors"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "appointments_pet_id_fkey"
             columns: ["pet_id"]
             isOneToOne: false
@@ -73,6 +83,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      doctors: {
+        Row: {
+          clinic_address: string | null
+          contact_number: string | null
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          photo_url: string | null
+          specialization: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          clinic_address?: string | null
+          contact_number?: string | null
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          photo_url?: string | null
+          specialization?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          clinic_address?: string | null
+          contact_number?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          photo_url?: string | null
+          specialization?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       feeding_logs: {
         Row: {
@@ -316,6 +365,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          contact_number: string | null
           created_at: string
           id: string
           name: string | null
@@ -324,6 +374,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          contact_number?: string | null
           created_at?: string
           id?: string
           name?: string | null
@@ -332,6 +383,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          contact_number?: string | null
           created_at?: string
           id?: string
           name?: string | null
@@ -577,8 +629,14 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "owner" | "vet" | "admin"
-      appointment_status: "pending" | "confirmed" | "completed" | "cancelled"
+      app_role: "owner" | "vet" | "admin" | "doctor" | "client"
+      appointment_status:
+        | "pending"
+        | "confirmed"
+        | "completed"
+        | "cancelled"
+        | "accepted"
+        | "rejected"
       booking_status: "pending" | "confirmed" | "completed" | "cancelled"
       health_record_type: "checkup" | "surgery" | "lab" | "other"
       pet_gender: "male" | "female" | "unknown"
@@ -715,8 +773,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["owner", "vet", "admin"],
-      appointment_status: ["pending", "confirmed", "completed", "cancelled"],
+      app_role: ["owner", "vet", "admin", "doctor", "client"],
+      appointment_status: [
+        "pending",
+        "confirmed",
+        "completed",
+        "cancelled",
+        "accepted",
+        "rejected",
+      ],
       booking_status: ["pending", "confirmed", "completed", "cancelled"],
       health_record_type: ["checkup", "surgery", "lab", "other"],
       pet_gender: ["male", "female", "unknown"],

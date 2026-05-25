@@ -19,13 +19,26 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
       toast({ title: "Login failed", description: error.message, variant: "destructive" });
       return;
     }
     toast({ title: "Welcome back! 🐾" });
+    if (data.user) {
+      const { data: roleRow } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", data.user.id)
+        .order("role")
+        .limit(1)
+        .maybeSingle();
+      if (roleRow?.role === "doctor") {
+        navigate("/doctor");
+        return;
+      }
+    }
     navigate("/home");
   };
 

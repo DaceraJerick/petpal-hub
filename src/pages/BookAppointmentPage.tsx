@@ -29,8 +29,8 @@ export default function BookAppointmentPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedClinic, setSelectedClinic] = useState("");
+  const [selectedDoctor, setSelectedDoctor] = useState("");
   const [selectedPet, setSelectedPet] = useState("");
-  const [vetName, setVetName] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [reason, setReason] = useState("");
@@ -40,6 +40,17 @@ export default function BookAppointmentPage() {
     queryKey: ["vet-clinics"],
     queryFn: async () => {
       const { data } = await supabase.from("vet_clinics").select("*").order("name");
+      return data ?? [];
+    },
+  });
+
+  const { data: doctors = [] } = useQuery({
+    queryKey: ["doctors-list"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("doctors")
+        .select("id, full_name, specialization, clinic_address, photo_url")
+        .order("full_name");
       return data ?? [];
     },
   });
@@ -55,16 +66,17 @@ export default function BookAppointmentPage() {
 
   const handleBook = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !selectedPet) return;
+    if (!user || !selectedPet || !selectedDoctor) return;
     setLoading(true);
     const { error } = await supabase.from("appointments").insert({
       user_id: user.id,
       pet_id: selectedPet,
+      doctor_id: selectedDoctor,
       clinic_id: selectedClinic || null,
-      vet_name: vetName || null,
       date,
       time,
       reason: reason || null,
+      status: "pending",
     });
     setLoading(false);
     if (error) {
@@ -72,7 +84,7 @@ export default function BookAppointmentPage() {
       return;
     }
     queryClient.invalidateQueries({ queryKey: ["appointments"] });
-    toast({ title: "Appointment booked! 🎉", description: "You'll receive a confirmation soon." });
+    toast({ title: "Appointment requested! 🎉", description: "The doctor will review and confirm shortly." });
     navigate("/appointments");
   };
 
@@ -130,31 +142,38 @@ export default function BookAppointmentPage() {
       </div>
 
       <form onSubmit={handleBook} className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <Label>Pet *</Label>
-            <Select value={selectedPet} onValueChange={setSelectedPet} required>
-              <SelectTrigger><SelectValue placeholder="Select pet" /></SelectTrigger>
-              <SelectContent>
-                {pets.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Vet Name</Label>
-            <Input placeholder="Dr. Santos" value={vetName} onChange={e => setVetName(e.target.value)} />
-          </div>
+        <div className="space-y-2">
+          <Label>Select Doctor *</Label>
+          <Select value={selectedDoctor} onValueChange={setSelectedDoctor} required>
+            <SelectTrigger><SelectValue placeholder={doctors.length ? "Choose a registered doctor" : "No doctors registered yet"} /></SelectTrigger>
+            <SelectContent>
+              {doctors.map((d: any) => (
+                <SelectItem key={d.id} value={d.id}>
+                  Dr. {d.full_name}{d.specialization ? ` — ${d.specialization}` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Pet *</Label>
+          <Select value={selectedPet} onValueChange={setSelectedPet} required>
+            <SelectTrigger><SelectValue placeholder="Select pet" /></SelectTrigger>
+            <SelectContent>
+              {pets.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2"><Label>Date *</Label><Input type="date" required value={date} onChange={e => setDate(e.target.value)} /></div>
           <div className="space-y-2"><Label>Time *</Label><Input type="time" required value={time} onChange={e => setTime(e.target.value)} /></div>
         </div>
         <div className="space-y-2">
-          <Label>Reason for visit</Label>
+          <Label>Reason / notes</Label>
           <Textarea placeholder="e.g. Annual checkup, vaccination..." value={reason} onChange={e => setReason(e.target.value)} />
         </div>
-        <Button type="submit" className="w-full rounded-full font-heading font-bold" disabled={loading || !selectedPet}>
-          {loading ? "Booking..." : "Book Appointment 📅"}
+        <Button type="submit" className="w-full rounded-full font-heading font-bold" disabled={loading || !selectedPet || !selectedDoctor}>
+          {loading ? "Requesting..." : "Request Appointment 📅"}
         </Button>
       </form>
     </div>
