@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { DoctorRoute } from "@/components/DoctorRoute";
+import DoctorDashboardPage from "./pages/DoctorDashboardPage";
 
 import { AppLayout } from "@/components/layout/AppLayout";
 import LandingPage from "./pages/LandingPage";
