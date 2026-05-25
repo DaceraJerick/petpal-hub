@@ -1,5 +1,6 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Calendar, Clock } from "lucide-react";
+import { Plus, Calendar, Clock, Stethoscope } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -13,7 +14,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { XCircle } from "lucide-react";
 
-const statusVariant = { pending: "warning" as const, confirmed: "default" as const, completed: "success" as const, cancelled: "destructive" as const };
+const statusVariant: Record<string, any> = {
+  pending: "warning",
+  accepted: "default",
+  confirmed: "default",
+  completed: "success",
+  rejected: "destructive",
+  cancelled: "destructive",
+};
 
 export default function AppointmentsPage() {
   const navigate = useNavigate();
@@ -26,7 +34,7 @@ export default function AppointmentsPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("appointments")
-        .select("*, pets(name), vet_clinics(name)")
+        .select("*, pets(name), vet_clinics(name), doctors(full_name, specialization)")
         .eq("user_id", user!.id)
         .order("date", { ascending: false });
       return data ?? [];
@@ -89,13 +97,16 @@ function ApptCard({ appt, index, onCancel, isPending }: { appt: any; index: numb
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
       <Card className="shadow-card">
         <CardContent className="p-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <h3 className="font-heading font-bold">{appt.pets?.name}'s {appt.reason || "Visit"}</h3>
-              <p className="text-sm text-muted-foreground">{appt.vet_name || "—"} — {appt.vet_clinics?.name || "—"}</p>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="font-heading font-bold truncate">{appt.pets?.name}'s {appt.reason || "Visit"}</h3>
+              <p className="text-sm text-muted-foreground flex items-center gap-1">
+                <Stethoscope className="h-3.5 w-3.5" /> {doctorName}
+                {appt.doctors?.specialization && <span className="text-xs">· {appt.doctors.specialization}</span>}
+              </p>
             </div>
-            <PillBadge variant={statusVariant[appt.status as keyof typeof statusVariant] || "muted"}>
-              {(appt.status as string)?.charAt(0).toUpperCase() + (appt.status as string)?.slice(1)}
+            <PillBadge variant={statusVariant[appt.status] || "muted"}>
+              {appt.status?.charAt(0).toUpperCase() + appt.status?.slice(1)}
             </PillBadge>
           </div>
           <div className="mt-3 flex items-center justify-between">

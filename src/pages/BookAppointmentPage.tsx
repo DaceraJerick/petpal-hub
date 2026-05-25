@@ -29,6 +29,7 @@ export default function BookAppointmentPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedClinic, setSelectedClinic] = useState("");
+  const [selectedDoctor, setSelectedDoctor] = useState("");
   const [selectedPet, setSelectedPet] = useState("");
   const [selectedDoctor, setSelectedDoctor] = useState("");
   const [date, setDate] = useState("");
@@ -40,6 +41,17 @@ export default function BookAppointmentPage() {
     queryKey: ["vet-clinics"],
     queryFn: async () => {
       const { data } = await supabase.from("vet_clinics").select("*").order("name");
+      return data ?? [];
+    },
+  });
+
+  const { data: doctors = [] } = useQuery({
+    queryKey: ["doctors-list"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("doctors")
+        .select("id, full_name, specialization, clinic_address, photo_url")
+        .order("full_name");
       return data ?? [];
     },
   });
@@ -73,7 +85,7 @@ export default function BookAppointmentPage() {
 
   const handleBook = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !selectedPet) return;
+    if (!user || !selectedPet || !selectedDoctor) return;
     setLoading(true);
 
     const doctorData = (selectedDoctor && selectedDoctor !== "none")
@@ -83,12 +95,14 @@ export default function BookAppointmentPage() {
     const { error } = await supabase.from("appointments").insert({
       user_id: user.id,
       pet_id: selectedPet,
+      doctor_id: selectedDoctor,
       clinic_id: selectedClinic || null,
       doctor_id: (selectedDoctor && selectedDoctor !== "none") ? selectedDoctor : null,
       vet_name: doctorData?.name || null,
       date,
       time,
       reason: reason || null,
+      status: "pending",
     });
     setLoading(false);
     if (error) {
@@ -198,7 +212,7 @@ export default function BookAppointmentPage() {
         </div>
 
         <div className="space-y-2">
-          <Label>Reason for visit</Label>
+          <Label>Reason / notes</Label>
           <Textarea placeholder="e.g. Annual checkup, vaccination..." value={reason} onChange={e => setReason(e.target.value)} />
         </div>
 
