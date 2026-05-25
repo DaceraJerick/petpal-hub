@@ -19,6 +19,7 @@ export type Database = {
           clinic_id: string | null
           created_at: string
           date: string
+          doctor_id: string | null
           id: string
           notes: string | null
           pet_id: string
@@ -33,6 +34,7 @@ export type Database = {
           clinic_id?: string | null
           created_at?: string
           date: string
+          doctor_id?: string | null
           id?: string
           notes?: string | null
           pet_id: string
@@ -47,6 +49,7 @@ export type Database = {
           clinic_id?: string | null
           created_at?: string
           date?: string
+          doctor_id?: string | null
           id?: string
           notes?: string | null
           pet_id?: string

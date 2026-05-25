@@ -19,14 +19,37 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
+      setLoading(false);
       toast({ title: "Login failed", description: error.message, variant: "destructive" });
       return;
     }
-    toast({ title: "Welcome back! 🐾" });
-    navigate("/home");
+
+    // Check user role and redirect accordingly
+    const userId = data.user?.id;
+    if (userId) {
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId);
+
+      const roleList = (roles ?? []).map((r: any) => r.role);
+
+      setLoading(false);
+      toast({ title: "Welcome back! 🐾" });
+
+      if (roleList.includes("admin")) {
+        navigate("/admin");
+      } else if (roleList.includes("vet")) {
+        navigate("/doctor");
+      } else {
+        navigate("/home");
+      }
+    } else {
+      setLoading(false);
+      navigate("/home");
+    }
   };
 
   return (

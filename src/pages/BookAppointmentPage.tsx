@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MapPin, Phone, Clock } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, Clock, Stethoscope } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,7 +30,7 @@ export default function BookAppointmentPage() {
   const queryClient = useQueryClient();
   const [selectedClinic, setSelectedClinic] = useState("");
   const [selectedPet, setSelectedPet] = useState("");
-  const [vetName, setVetName] = useState("");
+  const [selectedDoctor, setSelectedDoctor] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [reason, setReason] = useState("");
@@ -53,15 +53,39 @@ export default function BookAppointmentPage() {
     enabled: !!user,
   });
 
+  // Fetch all registered doctors (users with vet role)
+  const { data: doctors = [] } = useQuery({
+    queryKey: ["doctors-list"],
+    queryFn: async () => {
+      const { data: vetRoles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "vet");
+      if (!vetRoles || vetRoles.length === 0) return [];
+      const vetIds = vetRoles.map((v: any) => v.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, name")
+        .in("user_id", vetIds);
+      return profiles ?? [];
+    },
+  });
+
   const handleBook = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !selectedPet) return;
     setLoading(true);
+
+    const doctorData = (selectedDoctor && selectedDoctor !== "none")
+      ? doctors.find((d: any) => d.user_id === selectedDoctor)
+      : null;
+
     const { error } = await supabase.from("appointments").insert({
       user_id: user.id,
       pet_id: selectedPet,
       clinic_id: selectedClinic || null,
-      vet_name: vetName || null,
+      doctor_id: (selectedDoctor && selectedDoctor !== "none") ? selectedDoctor : null,
+      vet_name: doctorData?.name || null,
       date,
       time,
       reason: reason || null,
@@ -72,14 +96,14 @@ export default function BookAppointmentPage() {
       return;
     }
     queryClient.invalidateQueries({ queryKey: ["appointments"] });
-    toast({ title: "Appointment booked! 🎉", description: "You'll receive a confirmation soon." });
+    toast({ title: "Appointment booked! 🎉", description: "The doctor will review and confirm your appointment." });
     navigate("/appointments");
   };
 
-  // Center map on Philippines (Manila)
-  const mapCenter: [number, number] = clinics.length > 0 && clinics[0].latitude
-    ? [Number(clinics[0].latitude), Number(clinics[0].longitude)]
-    : [14.5995, 120.9842];
+  const mapCenter: [number, number] =
+    clinics.length > 0 && clinics[0].latitude
+      ? [Number(clinics[0].latitude), Number(clinics[0].longitude)]
+      : [14.5995, 120.9842];
 
   if (clinicsLoading) return <div className="container mx-auto max-w-3xl px-4 py-4"><LoadingCard /><LoadingCard /></div>;
 
@@ -95,7 +119,7 @@ export default function BookAppointmentPage() {
           <div className="h-[250px] w-full">
             <MapContainer center={mapCenter} zoom={12} className="h-full w-full" scrollWheelZoom={false}>
               <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              {clinics.filter(c => c.latitude && c.longitude).map((clinic) => (
+              {clinics.filter((c: any) => c.latitude && c.longitude).map((clinic: any) => (
                 <Marker key={clinic.id} position={[Number(clinic.latitude), Number(clinic.longitude)]}>
                   <Popup>
                     <div className="text-sm">
@@ -112,10 +136,16 @@ export default function BookAppointmentPage() {
       )}
 
       <div className="space-y-2 mb-6">
-        {clinics.map((clinic) => (
-          <Card key={clinic.id} className={`cursor-pointer shadow-card transition-all ${selectedClinic === clinic.id ? "ring-2 ring-primary" : ""}`} onClick={() => setSelectedClinic(clinic.id)}>
+        {clinics.map((clinic: any) => (
+          <Card
+            key={clinic.id}
+            className={`cursor-pointer shadow-card transition-all ${selectedClinic === clinic.id ? "ring-2 ring-primary" : ""}`}
+            onClick={() => setSelectedClinic(clinic.id)}
+          >
             <CardContent className="flex items-center gap-3 p-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-light"><MapPin className="h-5 w-5 text-primary" /></div>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-light">
+                <MapPin className="h-5 w-5 text-primary" />
+              </div>
               <div className="flex-1">
                 <p className="text-sm font-medium">{clinic.name}</p>
                 <p className="text-xs text-muted-foreground">{clinic.address}</p>
@@ -136,23 +166,42 @@ export default function BookAppointmentPage() {
             <Select value={selectedPet} onValueChange={setSelectedPet} required>
               <SelectTrigger><SelectValue placeholder="Select pet" /></SelectTrigger>
               <SelectContent>
-                {pets.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                {pets.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
+
           <div className="space-y-2">
-            <Label>Vet Name</Label>
-            <Input placeholder="Dr. Santos" value={vetName} onChange={e => setVetName(e.target.value)} />
+            <Label>Doctor / Vet</Label>
+            <Select value={selectedDoctor} onValueChange={setSelectedDoctor}>
+              <SelectTrigger>
+                <div className="flex items-center gap-2">
+                  <Stethoscope className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <SelectValue placeholder="Select doctor" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No preference</SelectItem>
+                {doctors.map((d: any) => (
+                  <SelectItem key={d.user_id} value={d.user_id}>
+                    Dr. {d.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2"><Label>Date *</Label><Input type="date" required value={date} onChange={e => setDate(e.target.value)} /></div>
           <div className="space-y-2"><Label>Time *</Label><Input type="time" required value={time} onChange={e => setTime(e.target.value)} /></div>
         </div>
+
         <div className="space-y-2">
           <Label>Reason for visit</Label>
           <Textarea placeholder="e.g. Annual checkup, vaccination..." value={reason} onChange={e => setReason(e.target.value)} />
         </div>
+
         <Button type="submit" className="w-full rounded-full font-heading font-bold" disabled={loading || !selectedPet}>
           {loading ? "Booking..." : "Book Appointment 📅"}
         </Button>

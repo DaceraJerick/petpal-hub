@@ -46,3 +46,12 @@ VALUES
 ('Cantilan Paws Walker', 'dog_walking', 'Reliable dog walking services by locals who love pets.', '₱200/hour', 'Parang, Cantilan', 4.7, 15, 9.2816, 125.9422),
 ('Cantilan Vet Pharmacy', 'pharmacy', 'Essential pet meds, vitamins, and specialized diets.', 'Varies', 'Poblacion, Cantilan', 4.6, 55, 9.3357, 125.9770),
 ('K9 Training Cantilan', 'training', 'Basic obedience and behavior training for all breeds.', '₱1,500/session', 'San Pedro, Cantilan', 4.9, 12, 9.3499, 125.9744);
+
+-- 6. Ensure admin role exists for the admin user
+INSERT INTO public.user_roles (user_id, role)
+SELECT u.id, 'admin'
+FROM auth.users u
+WHERE u.email = 'admin@gmail.com'
+  AND NOT EXISTS (
+    SELECT 1 FROM public.user_roles ur WHERE ur.user_id = u.id AND ur.role = 'admin'
+  );

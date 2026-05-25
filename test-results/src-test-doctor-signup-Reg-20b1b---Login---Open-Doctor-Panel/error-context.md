@@ -1,0 +1,65 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - button "Trio Eyy" [ref=e6] [cursor=pointer]:
+          - img [ref=e8]
+          - generic [ref=e13]: Trio Eyy
+        - navigation [ref=e14]:
+          - button "Dashboard" [ref=e15] [cursor=pointer]:
+            - img [ref=e16]
+            - text: Dashboard
+          - button "My Pets" [ref=e19] [cursor=pointer]:
+            - img [ref=e20]
+            - text: My Pets
+          - button "Appointments" [ref=e25] [cursor=pointer]:
+            - img [ref=e26]
+            - text: Appointments
+          - button "Health" [ref=e28] [cursor=pointer]:
+            - img [ref=e29]
+            - text: Health
+          - button "Services" [ref=e33] [cursor=pointer]:
+            - img [ref=e34]
+            - text: Services
+        - generic [ref=e37]:
+          - button [ref=e38] [cursor=pointer]:
+            - img
+          - button [ref=e39] [cursor=pointer]:
+            - img
+    - main [ref=e40]:
+      - generic [ref=e41]:
+        - generic [ref=e43]:
+          - generic [ref=e44]:
+            - heading "Good evening! 🌞" [level=1] [ref=e45]
+            - paragraph [ref=e46]: Here's what's happening with your pets today
+          - button [ref=e47] [cursor=pointer]:
+            - img
+        - generic [ref=e48]:
+          - button "Feed" [ref=e49] [cursor=pointer]:
+            - img [ref=e51]
+            - generic [ref=e54]: Feed
+          - button "Vet" [ref=e55] [cursor=pointer]:
+            - img [ref=e57]
+            - generic [ref=e61]: Vet
+          - button "Medicine" [ref=e62] [cursor=pointer]:
+            - img [ref=e64]
+            - generic [ref=e66]: Medicine
+          - button "Grooming" [ref=e67] [cursor=pointer]:
+            - img [ref=e69]
+            - generic [ref=e75]: Grooming
+        - generic [ref=e76]:
+          - generic [ref=e77]:
+            - heading "My Pets" [level=2] [ref=e78]
+            - button "View All" [ref=e79] [cursor=pointer]:
+              - text: View All
+              - img
+          - generic [ref=e81]:
+            - text: No pets yet.
+            - button "Add one!" [ref=e82] [cursor=pointer]
+```

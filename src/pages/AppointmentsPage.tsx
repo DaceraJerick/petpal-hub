@@ -7,15 +7,19 @@ import { PillBadge } from "@/components/ui/pill-badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LoadingCard } from "@/components/ui/loading-card";
 import { motion } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { XCircle } from "lucide-react";
 
 const statusVariant = { pending: "warning" as const, confirmed: "default" as const, completed: "success" as const, cancelled: "destructive" as const };
 
 export default function AppointmentsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: appointments = [], isLoading } = useQuery({
     queryKey: ["appointments", user?.id],
@@ -28,6 +32,24 @@ export default function AppointmentsPage() {
       return data ?? [];
     },
     enabled: !!user,
+  });
+
+  const cancelAppt = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("appointments")
+        .update({ status: "cancelled" })
+        .eq("id", id)
+        .eq("user_id", user!.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      toast({ title: "Appointment Cancelled", description: "The appointment has been successfully cancelled." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
   });
 
   const upcoming = appointments.filter((a: any) => a.status === "confirmed" || a.status === "pending");
@@ -51,18 +73,18 @@ export default function AppointmentsPage() {
 
         <TabsContent value="upcoming" className="mt-4 space-y-3">
           {upcoming.length === 0 && <p className="text-center text-sm text-muted-foreground py-8">No upcoming appointments.</p>}
-          {upcoming.map((appt: any, i: number) => <ApptCard key={appt.id} appt={appt} index={i} />)}
+          {upcoming.map((appt: any, i: number) => <ApptCard key={appt.id} appt={appt} index={i} onCancel={cancelAppt.mutate} isPending={cancelAppt.isPending} />)}
         </TabsContent>
         <TabsContent value="past" className="mt-4 space-y-3">
           {past.length === 0 && <p className="text-center text-sm text-muted-foreground py-8">No past appointments.</p>}
-          {past.map((appt: any, i: number) => <ApptCard key={appt.id} appt={appt} index={i} />)}
+          {past.map((appt: any, i: number) => <ApptCard key={appt.id} appt={appt} index={i} onCancel={cancelAppt.mutate} isPending={cancelAppt.isPending} />)}
         </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function ApptCard({ appt, index }: { appt: any; index: number }) {
+function ApptCard({ appt, index, onCancel, isPending }: { appt: any; index: number; onCancel: (id: string) => void; isPending: boolean }) {
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
       <Card className="shadow-card">
@@ -76,9 +98,22 @@ function ApptCard({ appt, index }: { appt: any; index: number }) {
               {(appt.status as string)?.charAt(0).toUpperCase() + (appt.status as string)?.slice(1)}
             </PillBadge>
           </div>
-          <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" /> {appt.date}</span>
-            <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {appt.time?.slice(0, 5)}</span>
+          <div className="mt-3 flex items-center justify-between">
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" /> {appt.date}</span>
+              <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {appt.time?.slice(0, 5)}</span>
+            </div>
+            {appt.status === "pending" && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 rounded-full border-red-200 text-red-500 hover:bg-red-50 text-xs px-3"
+                onClick={() => onCancel(appt.id)}
+                disabled={isPending}
+              >
+                <XCircle className="h-3 w-3 mr-1" /> Cancel
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

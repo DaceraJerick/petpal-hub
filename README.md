@@ -24,6 +24,21 @@ PetPal Hub is a comprehensive management system for pet owners and caregivers, f
 1. Clone the repository
 2. Install dependencies: `npm i`
 3. Start development server: `npm run dev`
+## Admin account setup
+If you want to use the admin panel, make sure the admin user exists in Supabase Auth and has the `admin` role in `public.user_roles`.
 
+If the user exists but the admin role is missing, run this query in Supabase SQL Editor:
+
+```sql
+INSERT INTO public.user_roles (user_id, role)
+SELECT u.id, 'admin'
+FROM auth.users u
+WHERE u.email = 'admin@gmail.com'
+  AND NOT EXISTS (
+    SELECT 1 FROM public.user_roles ur WHERE ur.user_id = u.id AND ur.role = 'admin'
+  );
+```
+
+If you need a new admin user, create `admin@gmail.com` in Supabase Auth and set its password to `admin@gmail.com`.
 ---
 *Built with Lovable*
