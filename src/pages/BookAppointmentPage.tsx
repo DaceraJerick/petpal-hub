@@ -29,8 +29,8 @@ export default function BookAppointmentPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedClinic, setSelectedClinic] = useState("");
+  const [selectedDoctor, setSelectedDoctor] = useState("");
   const [selectedPet, setSelectedPet] = useState("");
-  const [vetName, setVetName] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [reason, setReason] = useState("");
@@ -40,6 +40,17 @@ export default function BookAppointmentPage() {
     queryKey: ["vet-clinics"],
     queryFn: async () => {
       const { data } = await supabase.from("vet_clinics").select("*").order("name");
+      return data ?? [];
+    },
+  });
+
+  const { data: doctors = [] } = useQuery({
+    queryKey: ["doctors-list"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("doctors")
+        .select("id, full_name, specialization, clinic_address, photo_url")
+        .order("full_name");
       return data ?? [];
     },
   });
@@ -55,16 +66,17 @@ export default function BookAppointmentPage() {
 
   const handleBook = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !selectedPet) return;
+    if (!user || !selectedPet || !selectedDoctor) return;
     setLoading(true);
     const { error } = await supabase.from("appointments").insert({
       user_id: user.id,
       pet_id: selectedPet,
+      doctor_id: selectedDoctor,
       clinic_id: selectedClinic || null,
-      vet_name: vetName || null,
       date,
       time,
       reason: reason || null,
+      status: "pending",
     });
     setLoading(false);
     if (error) {
@@ -72,7 +84,7 @@ export default function BookAppointmentPage() {
       return;
     }
     queryClient.invalidateQueries({ queryKey: ["appointments"] });
-    toast({ title: "Appointment booked! 🎉", description: "You'll receive a confirmation soon." });
+    toast({ title: "Appointment requested! 🎉", description: "The doctor will review and confirm shortly." });
     navigate("/appointments");
   };
 
