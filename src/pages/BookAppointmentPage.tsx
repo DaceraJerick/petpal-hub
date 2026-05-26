@@ -54,39 +54,35 @@ export default function BookAppointmentPage() {
     enabled: !!user,
   });
 
-  // Fetch all registered doctors (users with vet role)
+  // Fetch all registered doctors directly from doctors table
   const { data: doctors = [] } = useQuery({
     queryKey: ["doctors-list"],
     queryFn: async () => {
-      const { data: vetRoles } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "vet");
-      if (!vetRoles || vetRoles.length === 0) return [];
-      const vetIds = vetRoles.map((v: any) => v.user_id);
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, name")
-        .in("user_id", vetIds);
-      return profiles ?? [];
+      const { data } = await supabase
+        .from("doctors")
+        .select("id, full_name, specialization, clinic_address")
+        .order("full_name");
+      return data ?? [];
     },
   });
 
   const handleBook = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !selectedPet || !selectedDoctor) return;
+    if (!user || !selectedPet) return;
+    if (!selectedDoctor || selectedDoctor === "none") {
+      toast({ title: "Please select a doctor", variant: "destructive" });
+      return;
+    }
     setLoading(true);
 
-    const doctorData = (selectedDoctor && selectedDoctor !== "none")
-      ? doctors.find((d: any) => d.user_id === selectedDoctor)
-      : null;
+    const doctorData = doctors.find((d: any) => d.id === selectedDoctor);
 
     const { error } = await supabase.from("appointments").insert({
       user_id: user.id,
       pet_id: selectedPet,
       clinic_id: selectedClinic || null,
-      doctor_id: (selectedDoctor && selectedDoctor !== "none") ? selectedDoctor : null,
-      vet_name: doctorData?.name || null,
+      doctor_id: selectedDoctor,
+      vet_name: doctorData?.full_name || null,
       date,
       time,
       reason: reason || null,
