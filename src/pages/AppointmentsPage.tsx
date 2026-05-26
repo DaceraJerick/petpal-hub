@@ -101,7 +101,7 @@ function ApptCard({ appt, index, onCancel, isPending }: { appt: any; index: numb
             <div className="min-w-0">
               <h3 className="font-heading font-bold truncate">{appt.pets?.name}'s {appt.reason || "Visit"}</h3>
               <p className="text-sm text-muted-foreground flex items-center gap-1">
-                <Stethoscope className="h-3.5 w-3.5" /> {doctorName}
+                <Stethoscope className="h-3.5 w-3.5" /> {appt.doctors?.full_name || appt.vet_name || "Doctor"}
                 {appt.doctors?.specialization && <span className="text-xs">· {appt.doctors.specialization}</span>}
               </p>
             </div>

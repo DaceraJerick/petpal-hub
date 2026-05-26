@@ -34,32 +34,32 @@ export default function DoctorPanel() {
   const queryClient = useQueryClient();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const { data: appointments = [], isLoading } = useQuery({
-    queryKey: ["doctor-appointments", user?.id],
-    queryFn: async () => {
-      if (!user) return [];
-      const { data } = await supabase
-        .from("appointments")
-        .select("*, pets(name, species, breed), profiles(name, contact_number)")
-        .eq("vet_id", user.id)
-        .order("date", { ascending: false });
-      return data ?? [];
-    },
-    enabled: !!user,
-  });
-
   const { data: doctorProfile } = useQuery({
     queryKey: ["doctor-profile", user?.id],
     queryFn: async () => {
       if (!user) return null;
       const { data } = await supabase
-        .from("profiles")
+        .from("doctors")
         .select("*")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
       return data;
     },
     enabled: !!user,
+  });
+
+  const { data: appointments = [], isLoading } = useQuery({
+    queryKey: ["doctor-appointments", doctorProfile?.id],
+    queryFn: async () => {
+      if (!doctorProfile?.id) return [];
+      const { data } = await supabase
+        .from("appointments")
+        .select("*, pets(name, species, breed), profiles(name, contact_number)")
+        .eq("doctor_id", doctorProfile.id)
+        .order("date", { ascending: false });
+      return data ?? [];
+    },
+    enabled: !!doctorProfile?.id,
   });
 
   const stats = useMemo(() => ({
@@ -70,10 +70,11 @@ export default function DoctorPanel() {
   }), [appointments]);
 
   const updateStatus = async (id: string, newStatus: string) => {
-    await supabase.from("appointments").update({ status: newStatus }).eq("id", id);
-    queryClient.invalidateQueries({ queryKey: ["doctor-appointments", user?.id] });
+    await supabase.from("appointments").update({ status: newStatus as any }).eq("id", id);
+    queryClient.invalidateQueries({ queryKey: ["doctor-appointments", doctorProfile?.id] });
     queryClient.invalidateQueries({ queryKey: ["appointments", user?.id] });
   };
+
 
   const groupedAppointments = useMemo(() => ({
     pending: appointments.filter((a: any) => a.status === "pending"),

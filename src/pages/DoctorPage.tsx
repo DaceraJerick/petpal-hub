@@ -80,7 +80,7 @@ export default function DoctorPage() {
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       const { error } = await supabase
         .from("appointments")
-        .update({ status })
+        .update({ status: status as any })
         .eq("id", id)
         .eq("doctor_id", user!.id);
       if (error) throw error;
