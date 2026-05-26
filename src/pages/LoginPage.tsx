@@ -27,12 +27,42 @@ export default function LoginPage() {
     }
 
     // Check user role and redirect accordingly
-    const userId = data.user?.id;
-    if (userId) {
+    const user = data.user;
+    if (user) {
+      const metaRole = (user.user_metadata as any)?.role as string | undefined;
+
+      // Self-heal: if signup metadata says doctor but DB role isn't set, fix it
+      if (metaRole === "doctor") {
+        const { data: existing } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id);
+        const hasDoctor = (existing ?? []).some((r: any) => r.role === "doctor");
+        if (!hasDoctor) {
+          await supabase.from("user_roles").insert({ user_id: user.id, role: "doctor" as any });
+        }
+        // Ensure doctor profile row exists
+        const { data: doc } = await supabase
+          .from("doctors")
+          .select("id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (!doc) {
+          await supabase.from("doctors").insert({
+            user_id: user.id,
+            full_name: (user.user_metadata as any)?.full_name ?? user.email!,
+            email: user.email!,
+            specialization: (user.user_metadata as any)?.specialization ?? null,
+            clinic_address: (user.user_metadata as any)?.clinic_address ?? null,
+            contact_number: (user.user_metadata as any)?.contact_number ?? null,
+          });
+        }
+      }
+
       const { data: roles } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", userId);
+        .eq("user_id", user.id);
 
       const roleList = (roles ?? []).map((r: any) => r.role);
 
@@ -41,7 +71,7 @@ export default function LoginPage() {
 
       if (roleList.includes("admin")) {
         navigate("/admin");
-      } else if (roleList.includes("vet")) {
+      } else if (roleList.includes("doctor") || metaRole === "doctor") {
         navigate("/doctor");
       } else {
         navigate("/home");
@@ -51,6 +81,7 @@ export default function LoginPage() {
       navigate("/home");
     }
   };
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
