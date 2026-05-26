@@ -174,20 +174,29 @@ export default function DoctorPanel() {
                             <div className="p-2 bg-white rounded-lg"><StatusIcon className="h-5 w-5 text-primary" /></div>
                             <div>
                               <h3 className="font-bold">{appt.pets?.name}'s {appt.reason || "Appointment"}</h3>
-                              <p className="text-xs text-muted-foreground">{appt.pets?.species} • {appt.pets?.breed}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {appt.pets?.species}{appt.pets?.breed ? ` • ${appt.pets.breed}` : ""} · Owner: {appt.owner?.name || "—"}
+                              </p>
                             </div>
                           </div>
                           <Badge variant="outline">{appt.status.toUpperCase()}</Badge>
                         </div>
 
                         {expandedId === appt.id && (
-                          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 pt-4 border-t space-y-3">
+                          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 pt-4 border-t space-y-3" onClick={(e) => e.stopPropagation()}>
                             <div className="grid grid-cols-2 gap-3">
                               <div className="flex items-center gap-2">
                                 <User className="h-4 w-4 text-muted-foreground" />
                                 <div>
                                   <p className="text-xs text-muted-foreground">Owner</p>
-                                  <p className="text-sm font-medium">{appt.profiles?.name}</p>
+                                  <p className="text-sm font-medium">{appt.owner?.name || "Unknown"}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Phone className="h-4 w-4 text-muted-foreground" />
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Contact</p>
+                                  <p className="text-sm font-medium">{appt.owner?.contact_number || "—"}</p>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
@@ -197,14 +206,34 @@ export default function DoctorPanel() {
                                   <p className="text-sm font-medium">{appt.date} {appt.time?.slice(0, 5)}</p>
                                 </div>
                               </div>
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4 text-muted-foreground" />
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Pet</p>
+                                  <p className="text-sm font-medium">{appt.pets?.name} ({appt.pets?.species})</p>
+                                </div>
+                              </div>
                             </div>
 
                             {appt.reason && (
-                              <div className="bg-white bg-opacity-50 p-2 rounded text-sm">
-                                <p className="text-xs text-muted-foreground mb-1">Notes</p>
+                              <div className="bg-white/60 p-2 rounded text-sm">
+                                <p className="text-xs text-muted-foreground mb-1">Reason</p>
                                 <p>{appt.reason}</p>
                               </div>
                             )}
+
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Doctor's Notes</p>
+                              <Textarea
+                                placeholder="Add clinical notes, diagnosis, recommendations..."
+                                defaultValue={appt.notes || ""}
+                                onChange={(e) => setNoteDraft((d) => ({ ...d, [appt.id]: e.target.value }))}
+                                className="bg-white/80 text-sm min-h-[70px]"
+                              />
+                              <Button size="sm" variant="outline" className="mt-2 rounded-full" onClick={() => saveNote(appt.id)}>
+                                Save Notes
+                              </Button>
+                            </div>
 
                             {appt.status === "pending" && (
                               <div className="flex gap-2">
@@ -212,7 +241,7 @@ export default function DoctorPanel() {
                                   ✓ Accept
                                 </Button>
                                 <Button size="sm" variant="destructive" onClick={() => updateStatus(appt.id, "rejected")} className="flex-1 rounded-full">
-                                  ✕ Reject
+                                  ✕ Decline
                                 </Button>
                               </div>
                             )}
