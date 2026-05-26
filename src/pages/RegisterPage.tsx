@@ -11,7 +11,6 @@ import { supabase } from "@/integrations/supabase/client";
 type Role = "client" | "doctor";
 
 export default function RegisterPage() {
-  const [role, setRole] = useState<Role>("client");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,6 +23,8 @@ export default function RegisterPage() {
   const [selectedRole, setSelectedRole] = useState<"owner" | "vet">("owner");
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const role: Role = selectedRole === "vet" ? "doctor" : "client";
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +44,7 @@ export default function RegisterPage() {
       email,
       password,
       options: {
-        data: { full_name: name, role: selectedRole },
+        data: metadata,
         emailRedirectTo: window.location.origin,
       },
     });
@@ -54,7 +55,6 @@ export default function RegisterPage() {
       return;
     }
 
-    // Upload doctor photo after signup if session is available
     if (role === "doctor" && photoFile && signUpData.user) {
       const userId = signUpData.user.id;
       const ext = photoFile.name.split(".").pop();
@@ -75,6 +75,7 @@ export default function RegisterPage() {
     });
     navigate("/login");
   };
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
