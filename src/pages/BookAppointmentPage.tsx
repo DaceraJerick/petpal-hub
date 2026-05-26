@@ -179,10 +179,10 @@ export default function BookAppointmentPage() {
                 </div>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">No preference</SelectItem>
+                {doctors.length === 0 && <div className="px-2 py-3 text-xs text-muted-foreground">No doctors registered yet</div>}
                 {doctors.map((d: any) => (
-                  <SelectItem key={d.user_id} value={d.user_id}>
-                    Dr. {d.name}
+                  <SelectItem key={d.id} value={d.id}>
+                    Dr. {d.full_name}{d.specialization ? ` · ${d.specialization}` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
