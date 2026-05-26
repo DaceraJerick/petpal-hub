@@ -34,17 +34,15 @@ const statusIcons: { [key: string]: any } = {
 export default function DoctorPanel() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
 
   const { data: doctorProfile } = useQuery({
     queryKey: ["doctor-profile", user?.id],
     queryFn: async () => {
       if (!user) return null;
-      const { data } = await supabase
-        .from("doctors")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      const { data } = await supabase.from("doctors").select("*").eq("user_id", user.id).maybeSingle();
       return data;
     },
     enabled: !!user,
@@ -54,15 +52,35 @@ export default function DoctorPanel() {
     queryKey: ["doctor-appointments", doctorProfile?.id],
     queryFn: async () => {
       if (!doctorProfile?.id) return [];
-      const { data } = await supabase
+      const { data: appts } = await supabase
         .from("appointments")
-        .select("*, pets(name, species, breed), profiles(name, contact_number)")
+        .select("*, pets(name, species, breed, dob, photo_url)")
         .eq("doctor_id", doctorProfile.id)
         .order("date", { ascending: false });
-      return data ?? [];
+      if (!appts || appts.length === 0) return [];
+      const ownerIds = Array.from(new Set(appts.map((a: any) => a.user_id)));
+      const { data: owners } = await supabase
+        .from("profiles")
+        .select("user_id, name, contact_number")
+        .in("user_id", ownerIds);
+      const ownerMap = new Map((owners ?? []).map((o: any) => [o.user_id, o]));
+      return appts.map((a: any) => ({ ...a, owner: ownerMap.get(a.user_id) }));
     },
     enabled: !!doctorProfile?.id,
+    refetchInterval: 8000,
+    refetchOnWindowFocus: true,
   });
+
+  useEffect(() => {
+    if (!doctorProfile?.id) return;
+    const channel = supabase
+      .channel(`appointments-doctor-${doctorProfile.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointments", filter: `doctor_id=eq.${doctorProfile.id}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ["doctor-appointments", doctorProfile.id] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [doctorProfile?.id, queryClient]);
 
   const stats = useMemo(() => ({
     pending: appointments.filter((a: any) => a.status === "pending").length,
@@ -72,9 +90,18 @@ export default function DoctorPanel() {
   }), [appointments]);
 
   const updateStatus = async (id: string, newStatus: string) => {
-    await supabase.from("appointments").update({ status: newStatus as any }).eq("id", id);
+    const { error } = await supabase.from("appointments").update({ status: newStatus as any }).eq("id", id);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     queryClient.invalidateQueries({ queryKey: ["doctor-appointments", doctorProfile?.id] });
-    queryClient.invalidateQueries({ queryKey: ["appointments", user?.id] });
+    toast({ title: `Appointment ${newStatus}`, description: "The pet owner has been notified." });
+  };
+
+  const saveNote = async (id: string) => {
+    const note = noteDraft[id] ?? "";
+    const { error } = await supabase.from("appointments").update({ notes: note }).eq("id", id);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    queryClient.invalidateQueries({ queryKey: ["doctor-appointments", doctorProfile?.id] });
+    toast({ title: "Notes saved" });
   };
 
 
