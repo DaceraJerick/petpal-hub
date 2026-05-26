@@ -1,15 +1,17 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { LoadingCard } from "@/components/ui/loading-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { CheckCircle, XCircle, Clock, CheckCheck, Calendar, MapPin, User } from "lucide-react";
+import { CheckCircle, XCircle, Clock, CheckCheck, Calendar, User, Phone, FileText } from "lucide-react";
 
 const statusColors: { [key: string]: string } = {
   pending: "bg-yellow-50 border-yellow-200",
@@ -32,17 +34,15 @@ const statusIcons: { [key: string]: any } = {
 export default function DoctorPanel() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
 
   const { data: doctorProfile } = useQuery({
     queryKey: ["doctor-profile", user?.id],
     queryFn: async () => {
       if (!user) return null;
-      const { data } = await supabase
-        .from("doctors")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      const { data } = await supabase.from("doctors").select("*").eq("user_id", user.id).maybeSingle();
       return data;
     },
     enabled: !!user,
@@ -52,15 +52,35 @@ export default function DoctorPanel() {
     queryKey: ["doctor-appointments", doctorProfile?.id],
     queryFn: async () => {
       if (!doctorProfile?.id) return [];
-      const { data } = await supabase
+      const { data: appts } = await supabase
         .from("appointments")
-        .select("*, pets(name, species, breed), profiles(name, contact_number)")
+        .select("*, pets(name, species, breed, dob, photo_url)")
         .eq("doctor_id", doctorProfile.id)
         .order("date", { ascending: false });
-      return data ?? [];
+      if (!appts || appts.length === 0) return [];
+      const ownerIds = Array.from(new Set(appts.map((a: any) => a.user_id)));
+      const { data: owners } = await supabase
+        .from("profiles")
+        .select("user_id, name, contact_number")
+        .in("user_id", ownerIds);
+      const ownerMap = new Map((owners ?? []).map((o: any) => [o.user_id, o]));
+      return appts.map((a: any) => ({ ...a, owner: ownerMap.get(a.user_id) }));
     },
     enabled: !!doctorProfile?.id,
+    refetchInterval: 8000,
+    refetchOnWindowFocus: true,
   });
+
+  useEffect(() => {
+    if (!doctorProfile?.id) return;
+    const channel = supabase
+      .channel(`appointments-doctor-${doctorProfile.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointments", filter: `doctor_id=eq.${doctorProfile.id}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ["doctor-appointments", doctorProfile.id] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [doctorProfile?.id, queryClient]);
 
   const stats = useMemo(() => ({
     pending: appointments.filter((a: any) => a.status === "pending").length,
@@ -70,9 +90,18 @@ export default function DoctorPanel() {
   }), [appointments]);
 
   const updateStatus = async (id: string, newStatus: string) => {
-    await supabase.from("appointments").update({ status: newStatus as any }).eq("id", id);
+    const { error } = await supabase.from("appointments").update({ status: newStatus as any }).eq("id", id);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     queryClient.invalidateQueries({ queryKey: ["doctor-appointments", doctorProfile?.id] });
-    queryClient.invalidateQueries({ queryKey: ["appointments", user?.id] });
+    toast({ title: `Appointment ${newStatus}`, description: "The pet owner has been notified." });
+  };
+
+  const saveNote = async (id: string) => {
+    const note = noteDraft[id] ?? "";
+    const { error } = await supabase.from("appointments").update({ notes: note }).eq("id", id);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    queryClient.invalidateQueries({ queryKey: ["doctor-appointments", doctorProfile?.id] });
+    toast({ title: "Notes saved" });
   };
 
 
@@ -145,20 +174,29 @@ export default function DoctorPanel() {
                             <div className="p-2 bg-white rounded-lg"><StatusIcon className="h-5 w-5 text-primary" /></div>
                             <div>
                               <h3 className="font-bold">{appt.pets?.name}'s {appt.reason || "Appointment"}</h3>
-                              <p className="text-xs text-muted-foreground">{appt.pets?.species} • {appt.pets?.breed}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {appt.pets?.species}{appt.pets?.breed ? ` • ${appt.pets.breed}` : ""} · Owner: {appt.owner?.name || "—"}
+                              </p>
                             </div>
                           </div>
                           <Badge variant="outline">{appt.status.toUpperCase()}</Badge>
                         </div>
 
                         {expandedId === appt.id && (
-                          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 pt-4 border-t space-y-3">
+                          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 pt-4 border-t space-y-3" onClick={(e) => e.stopPropagation()}>
                             <div className="grid grid-cols-2 gap-3">
                               <div className="flex items-center gap-2">
                                 <User className="h-4 w-4 text-muted-foreground" />
                                 <div>
                                   <p className="text-xs text-muted-foreground">Owner</p>
-                                  <p className="text-sm font-medium">{appt.profiles?.name}</p>
+                                  <p className="text-sm font-medium">{appt.owner?.name || "Unknown"}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Phone className="h-4 w-4 text-muted-foreground" />
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Contact</p>
+                                  <p className="text-sm font-medium">{appt.owner?.contact_number || "—"}</p>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
@@ -168,14 +206,34 @@ export default function DoctorPanel() {
                                   <p className="text-sm font-medium">{appt.date} {appt.time?.slice(0, 5)}</p>
                                 </div>
                               </div>
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4 text-muted-foreground" />
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Pet</p>
+                                  <p className="text-sm font-medium">{appt.pets?.name} ({appt.pets?.species})</p>
+                                </div>
+                              </div>
                             </div>
 
                             {appt.reason && (
-                              <div className="bg-white bg-opacity-50 p-2 rounded text-sm">
-                                <p className="text-xs text-muted-foreground mb-1">Notes</p>
+                              <div className="bg-white/60 p-2 rounded text-sm">
+                                <p className="text-xs text-muted-foreground mb-1">Reason</p>
                                 <p>{appt.reason}</p>
                               </div>
                             )}
+
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Doctor's Notes</p>
+                              <Textarea
+                                placeholder="Add clinical notes, diagnosis, recommendations..."
+                                defaultValue={appt.notes || ""}
+                                onChange={(e) => setNoteDraft((d) => ({ ...d, [appt.id]: e.target.value }))}
+                                className="bg-white/80 text-sm min-h-[70px]"
+                              />
+                              <Button size="sm" variant="outline" className="mt-2 rounded-full" onClick={() => saveNote(appt.id)}>
+                                Save Notes
+                              </Button>
+                            </div>
 
                             {appt.status === "pending" && (
                               <div className="flex gap-2">
@@ -183,7 +241,7 @@ export default function DoctorPanel() {
                                   ✓ Accept
                                 </Button>
                                 <Button size="sm" variant="destructive" onClick={() => updateStatus(appt.id, "rejected")} className="flex-1 rounded-full">
-                                  ✕ Reject
+                                  ✕ Decline
                                 </Button>
                               </div>
                             )}
