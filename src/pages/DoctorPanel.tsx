@@ -1,15 +1,17 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { LoadingCard } from "@/components/ui/loading-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { CheckCircle, XCircle, Clock, CheckCheck, Calendar, MapPin, User } from "lucide-react";
+import { CheckCircle, XCircle, Clock, CheckCheck, Calendar, User, Phone, FileText } from "lucide-react";
 
 const statusColors: { [key: string]: string } = {
   pending: "bg-yellow-50 border-yellow-200",
